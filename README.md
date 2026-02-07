@@ -57,6 +57,192 @@ MoleSwap:
 
 This is the difference between **hiding how you trade** vs **hiding that you traded at all**.
 
+---
+
+## 🔐 iExec TEE: The Heart of MoleSwap
+
+### Why TEE is Critical
+
+The entire privacy guarantee of MoleSwap depends on one thing: **stealth private keys must never be exposed**. 
+
+If generated outside a TEE:
+- Oracle operator could steal keys
+- Memory dumps could leak keys
+- Side-channel attacks could extract keys
+
+With iExec TEE (Intel SGX):
+- Keys generated in **hardware-encrypted memory**
+- Not even the machine owner can access enclave data
+- Cryptographic attestation proves code integrity
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     iExec TEE (SGX Enclave)                     │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                   PROTECTED MEMORY                        │  │
+│  │                                                           │  │
+│  │   🔐 Stealth Key Generation                               │  │
+│  │   🔐 Private Key Encryption                               │  │
+│  │   🔐 Batch Signing                                        │  │
+│  │                                                           │  │
+│  │   ⛔ Cannot be read by:                                   │  │
+│  │      - Host operating system                              │  │
+│  │      - Hypervisor                                         │  │
+│  │      - Physical machine owner                             │  │
+│  │      - Other processes                                    │  │
+│  │                                                           │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                              │                                   │
+│                              ▼                                   │
+│                    Encrypted Output Only                         │
+│            (encryptedStealthKey, signature)                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### What Happens Inside the TEE
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        TEE EXECUTION FLOW                                │
+└──────────────────────────────────────────────────────────────────────────┘
+
+     INPUT (from Oracle)                    OUTPUT (to Blockchain)
+            │                                        ▲
+            ▼                                        │
+┌──────────────────┐                    ┌──────────────────────┐
+│  Intent Data     │                    │  Settlement Batch    │
+│  ─────────────   │                    │  ─────────────────   │
+│  • intentId      │                    │  • stealthAddress    │
+│  • sender        │                    │  • amountOut         │
+│  • tokenIn/Out   │                    │  • releaseTime       │
+│  • amountIn      │                    │  • encryptedKey 🔐   │
+│  • viewingPubKey │                    │  • teeSignature ✍️   │
+└────────┬─────────┘                    └──────────▲───────────┘
+         │                                         │
+         │         ┌─────────────────────────────┐ │
+         │         │      SGX ENCLAVE            │ │
+         │         │  ┌───────────────────────┐  │ │
+         └────────►│  │ 1. GENERATE STEALTH   │  │ │
+                   │  │    WALLET             │  │ │
+                   │  │    ┌─────────────┐    │  │ │
+                   │  │    │ Random seed │    │  │ │
+                   │  │    │     ↓       │    │  │ │
+                   │  │    │ privateKey  │────┼──┼─┼──► NEVER LEAVES
+                   │  │    │ publicKey   │    │  │ │
+                   │  │    │     ↓       │    │  │ │
+                   │  │    │ stealthAddr │────┼──┼─┼──► Goes to blockchain
+                   │  │    └─────────────┘    │  │ │
+                   │  └───────────────────────┘  │ │
+                   │                             │ │
+                   │  ┌───────────────────────┐  │ │
+                   │  │ 2. ENCRYPT PRIVATE    │  │ │
+                   │  │    KEY                │  │ │
+                   │  │    ┌─────────────┐    │  │ │
+                   │  │    │ privateKey  │    │  │ │
+                   │  │    │     +       │    │  │ │
+                   │  │    │ viewingKey  │    │  │ │
+                   │  │    │     ↓       │    │  │ │
+                   │  │    │ ECIES enc.  │────┼──┼─┼──► encryptedStealthKey
+                   │  │    └─────────────┘    │  │ │    (only user can decrypt)
+                   │  └───────────────────────┘  │ │
+                   │                             │ │
+                   │  ┌───────────────────────┐  │ │
+                   │  │ 3. SIGN BATCH         │  │ │
+                   │  │    ┌─────────────┐    │  │ │
+                   │  │    │ batchHash   │    │  │ │
+                   │  │    │     +       │    │  │ │
+                   │  │    │ TEE privKey │    │  │ │
+                   │  │    │     ↓       │    │  │ │
+                   │  │    │ signature   │────┼──┼─┼──► teeSignature
+                   │  │    └─────────────┘    │  │ │    (proves TEE executed)
+                   │  └───────────────────────┘  │ │
+                   │                             │ │
+                   └─────────────────────────────┘ │
+                                                   │
+                                    ───────────────┘
+```
+
+### TEE Security Guarantees
+
+| Guarantee | How TEE Provides It |
+|-----------|---------------------|
+| **Confidentiality** | Private keys exist only in encrypted enclave memory |
+| **Integrity** | Code hash verified before execution (attestation) |
+| **Authenticity** | TEE signature proves batch came from valid enclave |
+| **Isolation** | Even root/kernel cannot access enclave memory |
+
+### Key Generation Inside TEE
+
+```javascript
+// This code runs INSIDE the iExec SGX enclave
+// tee-app/src/app.js
+
+const generateStealthWallet = (viewingPubKey) => {
+  // 1. Generate random wallet (entropy from SGX hardware RNG)
+  const stealthWallet = ethers.Wallet.createRandom();
+  
+  // 2. Encrypt private key with user's viewing public key
+  //    Only the user can decrypt this with their viewing private key
+  const encryptedKey = eciesEncrypt(
+    viewingPubKey,           // User's public key
+    stealthWallet.privateKey // Stealth private key (NEVER exposed raw)
+  );
+  
+  // 3. Return only public data + encrypted key
+  return {
+    stealthAddress: stealthWallet.address,  // Public: goes on-chain
+    encryptedStealthKey: encryptedKey       // Encrypted: only user can decrypt
+    // privateKey: NEVER RETURNED - exists only in enclave memory
+  };
+};
+```
+
+### Attestation: Proving TEE Execution
+
+iExec provides cryptographic proof that our code ran inside a genuine SGX enclave:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ATTESTATION FLOW                         │
+└─────────────────────────────────────────────────────────────┘
+
+  1. TEE App deployed to iExec
+         │
+         ▼
+  2. iExec verifies app hash matches registered code
+         │
+         ▼
+  3. SGX enclave initialized with app code
+         │
+         ▼
+  4. Intel SGX generates attestation report
+     ┌─────────────────────────────────────┐
+     │  Attestation Report                 │
+     │  ─────────────────────              │
+     │  • MRENCLAVE (code hash)            │
+     │  • MRSIGNER (developer identity)    │
+     │  • Platform info                    │
+     │  • Intel signature                  │
+     └─────────────────────────────────────┘
+         │
+         ▼
+  5. Smart contract verifies TEE signature
+     - If valid: Settlement accepted ✅
+     - If invalid: Transaction reverts ❌
+```
+
+### Why iExec for This Hackathon
+
+| iExec Feature | How MoleSwap Uses It |
+|---------------|----------------------|
+| **Confidential Computing** | Stealth key generation in protected memory |
+| **Decentralized Workers** | Oracle doesn't need to trust single node |
+| **On-chain Verification** | TEE signature verified by smart contract |
+| **DataProtector** | Could extend to protect viewing keys |
+| **Result Encryption** | Encrypted keys delivered securely |
+
+---
+
 ## 🎯 Features
 
 - **Privacy-First Swaps**: Output tokens sent to freshly generated stealth addresses
