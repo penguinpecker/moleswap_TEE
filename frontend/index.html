@@ -884,6 +884,9 @@ let state = {
   selectedDenom: 100,
 };
 
+// Global timer reference to prevent overlap between transactions
+let activeTeeTimer = null;
+
 // ═══════════════════════════════════════════════════════════════
 // WALLET CONNECTION
 // ═══════════════════════════════════════════════════════════════
@@ -1254,6 +1257,12 @@ async function executeDirectSwap(amount) {
 }
 
 async function executePrivateSwap(amount) {
+  // Clear any existing timer from previous transaction
+  if (activeTeeTimer) {
+    clearInterval(activeTeeTimer);
+    activeTeeTimer = null;
+  }
+  
   const panel = document.getElementById('progressPanel');
   panel.classList.add('show');
   setProgressSteps([
@@ -1327,13 +1336,12 @@ async function executePrivateSwap(amount) {
 
     // Step 3: TEE processing
     let iexecTaskId = null;
-    const iexecAppUrl = `https://explorer.iex.ec/arbitrum-sepolia-testnet/app/${CONFIG.iexecApp}`;
     
     const getIexecLink = () => iexecTaskId 
-      ? `https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${iexecTaskId}`
-      : iexecAppUrl;
+      ? ` <a href="https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${iexecTaskId}" target="_blank" style="color:var(--purple);text-decoration:none;margin-left:4px">iExec ↗</a>`
+      : '';
     
-    updateStep('tee', 'active', `Triggering oracle... <a href="${getIexecLink()}" target="_blank" style="color:var(--purple);text-decoration:none;margin-left:4px">iExec ↗</a>`);
+    updateStep('tee', 'active', `Triggering oracle...${getIexecLink()}`);
     
     try {
       const response = await fetch(CONFIG.contracts.oracleUrl + '/submit', {
@@ -1357,9 +1365,15 @@ async function executePrivateSwap(amount) {
     const hook2 = new ethers.Contract(CONFIG.contracts.moleSwapHook, HOOK_ABI, state.provider);
     let releaseData = null;
     
+    // Clear any existing timer from previous transaction
+    if (activeTeeTimer) {
+      clearInterval(activeTeeTimer);
+      activeTeeTimer = null;
+    }
+    
     // Start elapsed timer for TEE step
     let teeElapsed = 0;
-    const teeTimer = setInterval(async () => {
+    activeTeeTimer = setInterval(async () => {
       teeElapsed++;
       // Try to get task ID if we don't have it
       if (!iexecTaskId) {
@@ -1371,7 +1385,7 @@ async function executePrivateSwap(amount) {
           }
         } catch {}
       }
-      updateStep('tee', 'active', `Waiting for TEE (${teeElapsed}s) <a href="${getIexecLink()}" target="_blank" style="color:var(--purple);text-decoration:none;margin-left:4px">iExec ↗</a>`);
+      updateStep('tee', 'active', `Waiting for TEE (${teeElapsed}s)${getIexecLink()}`);
     }, 1000);
 
     // Poll for release instead of relying on events (more reliable)
@@ -1418,7 +1432,10 @@ async function executePrivateSwap(amount) {
     };
 
     releaseData = await pollForRelease();
-    clearInterval(teeTimer);
+    if (activeTeeTimer) {
+      clearInterval(activeTeeTimer);
+      activeTeeTimer = null;
+    }
 
     if (!releaseData) {
       updateStep('tee', 'done', 'Submitted ✓ (check Stealth tab)');
@@ -1440,7 +1457,7 @@ async function executePrivateSwap(amount) {
       return;
     }
     
-    updateStep('tee', 'done', `TEE complete ✓ <a href="${getIexecLink()}" target="_blank" style="color:var(--purple);text-decoration:none;margin-left:4px">iExec ↗</a>`);
+    updateStep('tee', 'done', `TEE complete ✓${getIexecLink()}`);
     console.log('Release data:', releaseData);
 
     // Step 4: Privacy delay
@@ -1542,6 +1559,11 @@ async function executePrivateSwap(amount) {
     showToast('Private swap complete! Funds in stealth wallet.', 'success');
 
   } catch (e) {
+    // Clear timer on error
+    if (activeTeeTimer) {
+      clearInterval(activeTeeTimer);
+      activeTeeTimer = null;
+    }
     showToast(e.message || 'Swap failed', 'error');
     console.error(e);
   }
