@@ -1224,13 +1224,18 @@ async function executeDirectSwap(amount) {
     // For direct swap, use a dummy viewing key (swap happens immediately via AMM)
     const dummyViewingKey = '0x04' + '00'.repeat(64);
     
+    // Get current gas fees
+    const feeData = await state.provider.getFeeData();
+    const maxFee = feeData.maxFeePerGas ? feeData.maxFeePerGas * 2n : ethers.parseUnits('0.1', 'gwei');
+    const maxPriority = feeData.maxPriorityFeePerGas ? feeData.maxPriorityFeePerGas * 2n : ethers.parseUnits('0.01', 'gwei');
+    
     const tx = await hook.submitIntent(
       state.fromToken.address,
       state.toToken.address,
       amountWei,
       dummyViewingKey,
       deadline,
-      { gasLimit: 500000 }
+      { gasLimit: 500000, maxFeePerGas: maxFee, maxPriorityFeePerGas: maxPriority }
     );
     
     updateStep('swap', 'done', 'Tx submitted ✓');
@@ -1286,13 +1291,18 @@ async function executePrivateSwap(amount) {
 
     const hook = new ethers.Contract(CONFIG.contracts.moleSwapHook, HOOK_ABI, state.signer);
     
+    // Get current gas fees
+    const feeData = await state.provider.getFeeData();
+    const maxFee = feeData.maxFeePerGas ? feeData.maxFeePerGas * 2n : ethers.parseUnits('0.1', 'gwei');
+    const maxPriority = feeData.maxPriorityFeePerGas ? feeData.maxPriorityFeePerGas * 2n : ethers.parseUnits('0.01', 'gwei');
+    
     const tx = await hook.submitIntent(
       state.fromToken.address,
       state.toToken.address,
       amountWei,
       state.viewingKey.publicKey,
       deadline,
-      { gasLimit: 500000 }
+      { gasLimit: 500000, maxFeePerGas: maxFee, maxPriorityFeePerGas: maxPriority }
     );
     
     intentTxHash = tx.hash;
