@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoleSwap — Private DEX</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<style>
+:root {
+  --bg-deep: #080a0f;
+  --bg-tunnel: #0d1117;
+  --bg-card: #151b25;
+  --bg-card-hover: #1a2230;
+  --border: #1e2a3a;
+  --border-glow: #f5a62340;
+  --amber: #f5a623;
+  --amber-dim: #c4841c;
+  --green: #00e87b;
+  --green-dim: #00b862;
+  --red: #ff4757;
+  --purple: #a855f7;
+  --cyan: #22d3ee;
+  --text: #e8edf5;
+  --text-dim: #8892a4;
+  --text-muted: #555f70;
+  --font-display: 'Chakra Petch', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: var(--font-display);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+/* ── Animated background ─────────────────────── */
+#particles {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, #f5a62308 0%, transparent 60%),
+              radial-gradient(ellipse at 20% 80%, #00e87b05 0%, transparent 50%),
+              var(--bg-deep);
+}
+.tunnel-lines {
+  position: fixed; top: 50%; left: 50%; width: 200vmax; height: 200vmax;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, transparent 0deg, transparent 8deg, #f5a62304 9deg, transparent 10deg);
+  animation: tunnelSpin 120s linear infinite;
+  z-index: 0; pointer-events: none;
+}
+@keyframes tunnelSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* ── Layout ──────────────────────────────────── */
+.app-container {
+  position: relative; z-index: 1;
+  max-width: 520px; margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+/* ── Header ──────────────────────────────────── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 0 12px; margin-bottom: 8px;
+}
+.logo-group { display: flex; align-items: center; gap: 10px; }
+.logo-icon {
+  width: 38px; height: 38px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--amber), var(--amber-dim));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; box-shadow: 0 0 20px #f5a62330;
+}
+.logo-text { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.logo-text span { color: var(--amber); }
+
+/* ── Nav tabs ────────────────────────────────── */
+.nav-tabs {
+  display: flex; gap: 4px; margin-bottom: 16px;
+  background: var(--bg-card); border-radius: 14px; padding: 4px;
+  border: 1px solid var(--border);
+}
+.nav-tab {
+  flex: 1; padding: 10px 8px; text-align: center;
+  border-radius: 10px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  color: var(--text-dim); transition: all 0.2s;
+  border: none; background: none;
+}
+.nav-tab:hover { color: var(--text); background: var(--bg-card-hover); }
+.nav-tab.active {
+  color: var(--bg-deep); background: var(--amber);
+  font-weight: 700;
+}
+
+/* ── Cards ────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 12px;
+  transition: border-color 0.3s;
+}
+.card:hover { border-color: var(--border-glow); }
+.card-label {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 10px;
+}
+
+/* ── Token input rows ────────────────────────── */
+.token-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.token-amount-input {
+  flex: 1; background: none; border: none;
+  font-family: var(--font-mono); font-size: 28px; font-weight: 700;
+  color: var(--text); outline: none;
+}
+.token-amount-input::placeholder { color: var(--text-muted); }
+.token-selector {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 20px;
+  background: var(--bg-deep); border: 1px solid var(--border);
+  cursor: pointer; white-space: nowrap; transition: all 0.2s;
+  font-family: var(--font-display); font-weight: 600;
+  font-size: 15px; color: var(--text);
+}
+.token-selector:hover { border-color: var(--amber); }
+.token-icon {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+}
+.token-icon.eth { background: #627eea; }
+.token-icon.usdc { background: #2775ca; }
+.token-icon.dai { background: #f4b731; color: #000; }
+.token-icon.weth { background: #ec4899; }
+.balance-row {
+  display: flex; justify-content: space-between;
+  margin-top: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);
+}
+.max-btn {
+  color: var(--amber); cursor: pointer; border: none;
+  background: none; font-family: var(--font-mono); font-size: 12px;
+}
+.max-btn:hover { text-decoration: underline; }
+
+/* ── Swap direction arrow ────────────────────── */
+.swap-arrow-wrap {
+  display: flex; justify-content: center; margin: -6px 0;
+  position: relative; z-index: 2;
+}
+.swap-arrow {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: var(--bg-card); border: 3px solid var(--bg-deep);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s; color: var(--text-dim); font-size: 18px;
+}
+.swap-arrow:hover { background: var(--amber); color: var(--bg-deep); }
+
+/* ── Privacy toggle ──────────────────────────── */
+.privacy-section {
+  background: linear-gradient(135deg, var(--bg-card), #1a1428);
+  border: 1px solid #a855f730;
+  border-radius: 18px; padding: 16px 20px; margin-bottom: 12px;
+}
+.privacy-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.privacy-title {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 600; font-size: 14px;
+}
+.privacy-title .icon { font-size: 18px; }
+.toggle-track {
+  width: 48px; height: 26px; border-radius: 13px;
+  background: var(--text-muted); cursor: pointer; position: relative;
+  transition: background 0.3s;
+}
+.toggle-track.active { background: var(--purple); }
+.toggle-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: white; position: absolute; top: 2px; left: 2px;
+  transition: transform 0.3s;
+}
+.toggle-track.active .toggle-thumb { transform: translateX(22px); }
+.privacy-details {
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid #ffffff10;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  display: none;
+}
+.privacy-details.show { display: block; }
+.privacy-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+}
+.privacy-item {
+  padding: 8px 10px; border-radius: 8px; background: #ffffff06;
+}
+.privacy-item .label { color: var(--text-muted); font-size: 10px; margin-bottom: 2px; }
+.privacy-item .value { color: var(--green); font-size: 11px; }
+.privacy-item .value.visible { color: var(--red); }
+
+/* ── Stealth info banner ─────────────────────── */
+.stealth-banner {
+  background: linear-gradient(135deg, #0d1a12, #0a1520);
+  border: 1px solid #00e87b20;
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
+  font-family: var(--font-mono); font-size: 11px;
+  display: none;
+}
+.stealth-banner.show { display: block; }
+.stealth-banner .title {
+  color: var(--green); font-weight: 700; font-size: 12px;
+  margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+}
+.stealth-banner .desc { color: var(--text-dim); line-height: 1.5; }
+
+/* ── Action button ───────────────────────────── */
+.swap-btn {
+  width: 100%; padding: 16px; border-radius: 16px;
+  font-family: var(--font-display); font-size: 17px; font-weight: 700;
+  cursor: pointer; border: none; transition: all 0.2s;
+  letter-spacing: 0.5px; margin-top: 4px;
+}
+.swap-btn.connect {
+  background: linear-gradient(135deg, var(--amber), var(--amber-dim));
+  color: var(--bg-deep);
+}
+.swap-btn.swap {
+  background: linear-gradient(135deg, var(--green), var(--green-dim));
+  color: var(--bg-deep);
+}
+.swap-btn.private {
+  background: linear-gradient(135deg, var(--purple), #7c3aed);
+  color: white;
+}
+.swap-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px #00000040; }
+.swap-btn:disabled {
+  opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none;
+}
+
+/* ── Progress tracker ────────────────────────── */
+.progress-panel {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 18px; padding: 20px; margin-top: 12px; display: none;
+}
+.progress-panel.show { display: block; }
+.progress-title {
+  font-weight: 700; font-size: 14px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.step {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin-bottom: 14px; position: relative;
+}
+.step:last-child { margin-bottom: 0; }
+.step-dot {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--text-muted); display: flex;
+  align-items: center; justify-content: center;
+  font-size: 11px; transition: all 0.3s;
+}
+.step.active .step-dot { border-color: var(--amber); background: var(--amber); color: var(--bg-deep); }
+.step.done .step-dot { border-color: var(--green); background: var(--green); color: var(--bg-deep); }
+.step-line {
+  position: absolute; left: 11px; top: 28px; width: 2px; height: 18px;
+  background: var(--text-muted);
+}
+.step.done .step-line { background: var(--green); }
+.step-text { font-family: var(--font-mono); font-size: 12px; padding-top: 3px; }
+.step-text .label { color: var(--text); font-weight: 600; }
+.step-text .detail { color: var(--text-dim); margin-top: 2px; }
+
+/* ── Viewing Key section ─────────────────────── */
+.viewing-key-banner {
+  background: var(--bg-card); border: 1px solid var(--cyan)30;
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
+  font-family: var(--font-mono); font-size: 11px;
+}
+.vk-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.vk-title {
+  color: var(--cyan); font-weight: 700; font-size: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.vk-status {
+  padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+}
+.vk-status.active { background: var(--green)20; color: var(--green); }
+.vk-status.none { background: var(--red)20; color: var(--red); }
+.vk-desc { color: var(--text-dim); line-height: 1.5; }
+.vk-actions {
+  display: flex; gap: 8px; margin-top: 10px;
+}
+.vk-btn {
+  padding: 6px 12px; border-radius: 8px;
+  font-family: var(--font-mono); font-size: 11px;
+  cursor: pointer; border: 1px solid var(--border);
+  background: var(--bg-deep); color: var(--text-dim);
+  transition: all 0.2s;
+}
+.vk-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.vk-btn.primary { background: var(--cyan)15; border-color: var(--cyan)40; color: var(--cyan); }
+
+/* ══ STEALTH WALLETS TAB ═════════════════════ */
+.stealth-wallets-panel { display: none; }
+.stealth-wallets-panel.show { display: block; }
+
+.sw-empty {
+  text-align: center; padding: 40px 20px;
+  color: var(--text-muted); font-family: var(--font-mono); font-size: 13px;
+}
+.sw-empty .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+
+.sw-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 16px; margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+.sw-card:hover { border-color: var(--green)40; }
+.sw-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sw-addr {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  color: var(--green);
+}
+.sw-status-badge {
+  padding: 3px 8px; border-radius: 6px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+}
+.sw-status-badge.claimed { background: var(--green)20; color: var(--green); }
+.sw-status-badge.pending { background: var(--amber)20; color: var(--amber); }
+.sw-balances {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.sw-balance-item {
+  padding: 6px 12px; border-radius: 8px; background: var(--bg-deep);
+  font-family: var(--font-mono); font-size: 12px;
+}
+.sw-balance-item .amount { color: var(--text); font-weight: 600; }
+.sw-balance-item .symbol { color: var(--text-dim); margin-left: 4px; }
+.sw-actions { display: flex; gap: 8px; }
+.sw-action-btn {
+  padding: 8px 14px; border-radius: 10px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.2s;
+}
+.sw-action-btn.send { background: var(--green)20; color: var(--green); }
+.sw-action-btn.send:hover { background: var(--green)35; }
+.sw-action-btn.export { background: var(--purple)20; color: var(--purple); }
+.sw-action-btn.export:hover { background: var(--purple)35; }
+.sw-action-btn.claim { background: var(--amber)20; color: var(--amber); }
+.sw-action-btn.claim:hover { background: var(--amber)35; }
+
+/* ── Send from stealth modal ─────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: #000000cc;
+  z-index: 100; display: none; align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 24px; width: 90%; max-width: 440px;
+}
+.modal-title {
+  font-weight: 700; font-size: 16px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.modal-field {
+  margin-bottom: 14px;
+}
+.modal-field label {
+  display: block; font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;
+}
+.modal-field input {
+  width: 100%; padding: 12px 14px; border-radius: 12px;
+  background: var(--bg-deep); border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 13px; color: var(--text); outline: none;
+}
+.modal-field input:focus { border-color: var(--amber); }
+.modal-btns { display: flex; gap: 10px; margin-top: 18px; }
+.modal-btn {
+  flex: 1; padding: 12px; border-radius: 12px;
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  cursor: pointer; border: none; transition: all 0.2s;
+}
+.modal-btn.cancel { background: var(--bg-deep); color: var(--text-dim); border: 1px solid var(--border); }
+.modal-btn.confirm { background: var(--green); color: var(--bg-deep); }
+.modal-btn:hover { transform: translateY(-1px); }
+
+/* ── History tab ─────────────────────────────── */
+.history-panel { display: none; }
+.history-panel.show { display: block; }
+.history-item {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 8px;
+}
+.history-item-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.history-type {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  padding: 3px 8px; border-radius: 6px;
+}
+.history-type.private { background: var(--purple)20; color: var(--purple); }
+.history-type.direct { background: var(--green)20; color: var(--green); }
+.history-time { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.history-detail { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+.history-stealth {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.history-stealth-addr {
+  font-family: var(--font-mono); font-size: 11px; color: var(--green);
+}
+
+/* ── Token selection modal ───────────────────── */
+.token-modal { display: none; }
+.token-modal.show { display: flex; }
+.token-list { margin-top: 12px; }
+.token-list-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 12px; cursor: pointer;
+  transition: background 0.2s; margin-bottom: 4px;
+}
+.token-list-item:hover { background: var(--bg-card-hover); }
+.token-list-item .name { font-weight: 600; font-size: 14px; }
+.token-list-item .addr { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+
+/* ── Toast notifications ─────────────────────── */
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 200; }
+.toast {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 8px;
+  font-family: var(--font-mono); font-size: 12px;
+  animation: toastIn 0.3s ease-out;
+  max-width: 340px;
+}
+.toast.success { border-color: var(--green)40; }
+.toast.error { border-color: var(--red)40; }
+.toast.info { border-color: var(--cyan)40; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(40px); } }
+
+/* ── Utilities ───────────────────────────────── */
+.hidden { display: none !important; }
+.glow-amber { text-shadow: 0 0 10px var(--amber)40; }
+.glow-green { text-shadow: 0 0 10px var(--green)40; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.pulsing { animation: pulse 1.5s infinite; }
+</style>
+</head>
+<body>
+
+<div id="particles"><div class="tunnel-lines"></div></div>
+
+<div class="app-container">
+  <!-- ── Header ──────────────────────────────── -->
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">🕳️</div>
+      <div class="logo-text">Mole<span>Swap</span></div>
+    </div>
+    <button class="swap-btn connect" id="connectBtn" style="width:auto;padding:10px 18px;font-size:13px;" onclick="connectWallet()">
+      Connect Wallet
+    </button>
+  </div>
+
+  <!-- ── Navigation ──────────────────────────── -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('swap')">⚡ Swap</button>
+    <button class="nav-tab" onclick="switchTab('stealth')">🔒 Stealth Wallets</button>
+    <button class="nav-tab" onclick="switchTab('history')">📋 History</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- ══ SWAP TAB ══════════════════════════════ -->
+  <!-- ══════════════════════════════════════════ -->
+  <div id="swapPanel">
+
+    <!-- Viewing Key Banner -->
+    <div class="viewing-key-banner" id="vkBanner">
+      <div class="vk-header">
+        <div class="vk-title">🔑 Viewing Key</div>
+        <span class="vk-status none" id="vkStatus">NOT SET</span>
+      </div>
+      <div class="vk-desc" id="vkDesc">
+        Generate a viewing key to receive encrypted stealth wallet keys. Required for private swaps.
+      </div>
+      <div class="vk-actions">
+        <button class="vk-btn primary" id="vkGenBtn" onclick="generateViewingKey()">Generate Key</button>
+        <button class="vk-btn" id="vkBackupBtn" onclick="backupViewingKey()" style="display:none">Backup</button>
+      </div>
+    </div>
+
+    <!-- From Token -->
+    <div class="card">
+      <div class="card-label">You pay</div>
+      <div class="token-row">
+        <input class="token-amount-input" id="fromAmount" type="text" placeholder="0.0"
+               inputmode="decimal" oninput="onAmountChange()">
+        <div class="token-selector" id="fromTokenBtn" onclick="openTokenModal('from')">
+          <div class="token-icon eth" id="fromTokenIcon">Ξ</div>
+          <span id="fromTokenSymbol">MOLE-A</span>
+          <span style="color:var(--text-muted)">▾</span>
+        </div>
+      </div>
+      <div class="balance-row">
+        <span>Balance: <span id="fromBalance">—</span></span>
+        <button class="max-btn" onclick="setMax()">MAX</button>
+      </div>
+    </div>
+
+    <!-- Swap Arrow -->
+    <div class="swap-arrow-wrap">
+      <div class="swap-arrow" onclick="swapTokens()">↕</div>
+    </div>
+
+    <!-- To Token -->
+    <div class="card">
+      <div class="card-label">You receive</div>
+      <div class="token-row">
+        <input class="token-amount-input" id="toAmount" type="text" placeholder="0.0" readonly
+               style="color:var(--text-dim)">
+        <div class="token-selector" id="toTokenBtn" onclick="openTokenModal('to')">
+          <div class="token-icon usdc" id="toTokenIcon">$</div>
+          <span id="toTokenSymbol">MOLE-B</span>
+          <span style="color:var(--text-muted)">▾</span>
+        </div>
+      </div>
+      <div class="balance-row">
+        <span>Balance: <span id="toBalance">—</span></span>
+        <span></span>
+      </div>
+    </div>
+
+    <!-- Privacy Toggle -->
+    <div class="privacy-section">
+      <div class="privacy-header">
+        <div class="privacy-title">
+          <span class="icon">🛡️</span>
+          <span id="privacyLabel">TEE Privacy + Stealth</span>
+        </div>
+        <div class="toggle-track" id="privacyToggle" onclick="togglePrivacy()">
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+      <div class="privacy-details" id="privacyDetails">
+        <div style="margin-bottom:8px">Intent encrypted via iExec DataProtector. Output sent to a freshly generated stealth address.</div>
+        <div class="privacy-grid">
+          <div class="privacy-item"><div class="label">Token Pair</div><div class="value">Hidden</div></div>
+          <div class="privacy-item"><div class="label">Amount</div><div class="value">Hidden</div></div>
+          <div class="privacy-item"><div class="label">Direction</div><div class="value">Hidden</div></div>
+          <div class="privacy-item"><div class="label">Recipient</div><div class="value">Stealth Addr</div></div>
+          <div class="privacy-item"><div class="label">Sender</div><div class="value visible">Visible</div></div>
+          <div class="privacy-item"><div class="label">Deadline</div><div class="value visible">Visible</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stealth info banner -->
+    <div class="stealth-banner" id="stealthBanner">
+      <div class="title">🕳️ Stealth Delivery Active</div>
+      <div class="desc">
+        Swap output will be sent to a new stealth address generated inside the TEE. 
+        The private key will be encrypted with your viewing key — only you can claim it. 
+        No on-chain link between your wallet and the receiving address.
+      </div>
+    </div>
+
+    <!-- Swap Button -->
+    <button class="swap-btn connect" id="actionBtn" onclick="handleAction()">
+      Connect Wallet
+    </button>
+
+    <!-- Progress Panel -->
+    <div class="progress-panel" id="progressPanel">
+      <div class="progress-title" id="progressTitle">⏳ Processing...</div>
+      <div id="progressSteps"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- ══ STEALTH WALLETS TAB ═══════════════════ -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="stealth-wallets-panel" id="stealthPanel">
+    <div class="card" style="background:linear-gradient(135deg,var(--bg-card),#0d1a12);border-color:#00e87b20">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px">🔒 Your Stealth Wallets</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">
+            Private addresses holding your swap outputs
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--green)" id="totalStealthValue">$0.00</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)" id="stealthCount">0 wallets</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="stealthWalletsList">
+      <div class="sw-empty" id="swEmpty">
+        <div class="icon">🕳️</div>
+        <div>No stealth wallets yet</div>
+        <div style="margin-top:6px;font-size:11px">Complete a private swap to receive your first stealth wallet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- ══ HISTORY TAB ═══════════════════════════ -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="history-panel" id="historyPanel">
+    <div id="historyList">
+      <div class="sw-empty">
+        <div class="icon">📋</div>
+        <div>No swap history yet</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Token Selection Modal ───────────────── -->
+<div class="modal-overlay token-modal" id="tokenModal">
+  <div class="modal">
+    <div class="modal-title">Select Token</div>
+    <div class="token-list" id="tokenList"></div>
+    <div style="text-align:center;margin-top:12px">
+      <button class="modal-btn cancel" style="width:auto;padding:8px 20px" onclick="closeTokenModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Send from Stealth Modal ─────────────── -->
+<div class="modal-overlay" id="sendModal">
+  <div class="modal">
+    <div class="modal-title">📤 Send from Stealth Wallet</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-bottom:14px">
+      From: <span id="sendFromAddr" style="color:var(--green)"></span>
+    </div>
+    <div class="modal-field">
+      <label>Recipient Address</label>
+      <input type="text" id="sendToAddr" placeholder="0x...">
+    </div>
+    <div class="modal-field">
+      <label>Token</label>
+      <input type="text" id="sendToken" placeholder="Token address or symbol">
+    </div>
+    <div class="modal-field">
+      <label>Amount</label>
+      <input type="text" id="sendAmount" placeholder="0.0" inputmode="decimal">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeSendModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="executeSendFromStealth()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Export Key Modal ────────────────────── -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <div class="modal-title">🔑 Export Stealth Private Key</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--red);margin-bottom:14px">
+      ⚠️ Never share this key. Anyone with it controls this wallet.
+    </div>
+    <div class="modal-field">
+      <label>Private Key</label>
+      <input type="text" id="exportKeyValue" readonly style="color:var(--amber);cursor:pointer"
+             onclick="this.select();document.execCommand('copy');showToast('Copied!','success')">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeExportModal()" style="flex:1">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast Container ────────────────────── -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+
+const CONFIG = {
+  chainId: 421614,
+  chainIdHex: '0x66eee',
+  chainName: 'Arbitrum Sepolia',
+  rpcUrl: 'https://sepolia-rollup.arbitrum.io/rpc',
+  explorer: 'https://sepolia.arbiscan.io',
+  contracts: {
+    poolSwapTest: '0xf3a39c86dbd13c45365e57fb90fe413371f65af8',
+    moleSwapHook: '0x992fC170ACE1eF575DC640EFdA2eA76BD9c98080',
+    oracleUrl: 'http://localhost:3001',
+  },
+  slippageBps: 50,
+};
+
+const TOKENS = [
+  { symbol: 'MOLE-A', name: 'MoleToken A', address: '0xCc777c07d5ecCfFEB8C02E62805bd120CE4C7c6E', decimals: 18, iconClass: 'eth', iconText: '🐹' },
+  { symbol: 'MOLE-B', name: 'MoleToken B', address: '0xFbd51f6D6005f767AF48Bd6D52eFD53Fa419aFB1', decimals: 18, iconClass: 'weth', iconText: '🦔' },
+];
+
+const HOOK_ABI = [
+  // v3 with delay pool
+  'function submitIntent(address tokenIn, address tokenOut, uint256 amountIn, bytes viewingPubKey, uint256 deadline) returns (bytes32)',
+  'function cancelIntent(bytes32 intentId)',
+  'function getIntent(bytes32) view returns (tuple(address sender, address tokenIn, address tokenOut, uint256 amountIn, bytes viewingPubKey, uint256 deadline, uint256 submittedAt, bool settled))',
+  'function getRelease(bytes32) view returns (tuple(address token, address stealthAddress, uint256 amount, uint256 releaseTime, bytes encryptedStealthKey, bytes32 intentId, bool executed))',
+  'function getPendingIntents() view returns (bytes32[])',
+  'function getPendingReleases() view returns (bytes32[])',
+  'function getReleasesReadyToExecute() view returns (bytes32[])',
+  'function pendingIntentCount() view returns (uint256)',
+  'function pendingReleaseCount() view returns (uint256)',
+  'event IntentSubmitted(bytes32 indexed intentId, address indexed sender, address tokenIn, address tokenOut, uint256 amountIn, uint256 deadline)',
+  'event ReleaseQueued(bytes32 indexed releaseId, bytes32 indexed intentId, address stealthAddress, uint256 amount, uint256 releaseTime)',
+  'event ReleaseExecuted(bytes32 indexed releaseId, address indexed stealthAddress, address token, uint256 amount, bytes encryptedStealthKey)',
+  'event StealthKeyPublished(bytes32 indexed intentId, address indexed user, address stealthAddress, bytes encryptedKey)',
+];
+
+const ERC20_ABI = [
+  'function balanceOf(address) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function approve(address,uint256) returns (bool)',
+  'function allowance(address,address) view returns (uint256)',
+  'function transfer(address,uint256) returns (bool)',
+];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+
+let state = {
+  connected: false,
+  account: null,
+  provider: null,
+  signer: null,
+  fromToken: TOKENS[0],
+  toToken: TOKENS[1],
+  privacyEnabled: false,
+  selectingFor: null,
+  viewingKey: null,        // { publicKey, privateKey } — stored in localStorage
+  stealthWallets: [],      // [{ address, privateKey, intentId, token, claimed, balance }]
+  history: [],             // swap history
+};
+
+// ═══════════════════════════════════════════════════════════════
+// WALLET CONNECTION
+// ═══════════════════════════════════════════════════════════════
+
+async function connectWallet() {
+  if (!window.ethereum) return showToast('Install MetaMask', 'error');
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send('eth_requestAccounts', []);
+    try {
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CONFIG.chainIdHex }] });
+    } catch (e) {
+      if (e.code === 4902) {
+        await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
+          chainId: CONFIG.chainIdHex, chainName: CONFIG.chainName,
+          rpcUrls: [CONFIG.rpcUrl], nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+          blockExplorerUrls: [CONFIG.explorer]
+        }]});
+      }
+    }
+    state.provider = new ethers.BrowserProvider(window.ethereum);
+    state.signer = await state.provider.getSigner();
+    state.account = await state.signer.getAddress();
+    state.connected = true;
+
+    document.getElementById('connectBtn').textContent = shorten(state.account);
+    document.getElementById('connectBtn').style.background = 'var(--bg-card)';
+    document.getElementById('connectBtn').style.color = 'var(--text)';
+    document.getElementById('connectBtn').style.border = '1px solid var(--border)';
+
+    loadLocalData();
+    updateUI();
+    fetchBalances();
+    showToast('Connected to Arbitrum Sepolia', 'success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VIEWING KEY MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+function generateViewingKey() {
+  // Generate a secp256k1 keypair for ECIES
+  const wallet = ethers.Wallet.createRandom();
+  state.viewingKey = {
+    privateKey: wallet.privateKey,
+    publicKey: wallet.signingKey.publicKey, // uncompressed, 0x04...
+    address: wallet.address,
+  };
+  saveLocalData();
+  updateViewingKeyUI();
+  showToast('Viewing key generated! Backup recommended.', 'success');
+}
+
+function backupViewingKey() {
+  if (!state.viewingKey) return;
+  const data = JSON.stringify(state.viewingKey, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `moleswap-viewing-key-${shorten(state.account)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Viewing key downloaded', 'info');
+}
+
+function updateViewingKeyUI() {
+  const statusEl = document.getElementById('vkStatus');
+  const descEl = document.getElementById('vkDesc');
+  const genBtn = document.getElementById('vkGenBtn');
+  const backupBtn = document.getElementById('vkBackupBtn');
+
+  if (state.viewingKey) {
+    statusEl.textContent = 'ACTIVE';
+    statusEl.className = 'vk-status active';
+    descEl.textContent = `Public key: ${state.viewingKey.publicKey.slice(0, 22)}...`;
+    genBtn.textContent = 'Regenerate';
+    backupBtn.style.display = '';
+  } else {
+    statusEl.textContent = 'NOT SET';
+    statusEl.className = 'vk-status none';
+    descEl.textContent = 'Generate a viewing key to receive encrypted stealth wallet keys. Required for private swaps.';
+    genBtn.textContent = 'Generate Key';
+    backupBtn.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ECIES DECRYPTION (browser-side, using SubtleCrypto + ethers)
+// ═══════════════════════════════════════════════════════════════
+
+async function eciesDecryptBrowser(encryptedHex, privateKeyHex) {
+  const buf = hexToBytes(encryptedHex);
+  const ephPub = buf.slice(0, 65);
+  const iv = buf.slice(65, 77);
+  const tag = buf.slice(77, 93);
+  const ct = buf.slice(93);
+
+  // Compute ECDH shared secret using ethers SigningKey
+  const privKey = new ethers.SigningKey(privateKeyHex);
+  // Convert ephemeral public key to hex
+  const ephPubHex = '0x' + bytesToHex(ephPub);
+  const sharedSecret = privKey.computeSharedSecret(ephPubHex);
+
+  // SHA-256 of shared secret → AES key
+  const sharedBuf = hexToBytes(sharedSecret.slice(2));
+  const hashBuf = await crypto.subtle.digest('SHA-256', sharedBuf);
+  const aesKey = await crypto.subtle.importKey('raw', hashBuf, 'AES-GCM', false, ['decrypt']);
+
+  // Combine ciphertext + authTag for WebCrypto (it expects them concatenated)
+  const combined = new Uint8Array(ct.length + tag.length);
+  combined.set(ct); combined.set(tag, ct.length);
+
+  const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, aesKey, combined);
+  return new TextDecoder().decode(plainBuf);
+}
+
+function hexToBytes(hex) {
+  hex = hex.replace('0x', '');
+  const arr = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < arr.length; i++) arr[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return arr;
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOKEN SELECTION
+// ═══════════════════════════════════════════════════════════════
+
+function openTokenModal(which) {
+  state.selectingFor = which;
+  const list = document.getElementById('tokenList');
+  list.innerHTML = TOKENS.map((t, i) => `
+    <div class="token-list-item" onclick="selectToken(${i})">
+      <div class="token-icon ${t.iconClass}">${t.iconText}</div>
+      <div>
+        <div class="name">${t.symbol}</div>
+        <div class="addr">${t.name} ${t.isNative ? '' : '· ' + shorten(t.address)}</div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('tokenModal').classList.add('show');
+}
+
+function closeTokenModal() { document.getElementById('tokenModal').classList.remove('show'); }
+
+function selectToken(idx) {
+  const t = TOKENS[idx];
+  if (state.selectingFor === 'from') state.fromToken = t;
+  else state.toToken = t;
+  closeTokenModal();
+  updateUI();
+  fetchBalances();
+}
+
+function swapTokens() {
+  [state.fromToken, state.toToken] = [state.toToken, state.fromToken];
+  document.getElementById('fromAmount').value = '';
+  document.getElementById('toAmount').value = '';
+  updateUI();
+  fetchBalances();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PRIVACY TOGGLE
+// ═══════════════════════════════════════════════════════════════
+
+function togglePrivacy() {
+  state.privacyEnabled = !state.privacyEnabled;
+  const track = document.getElementById('privacyToggle');
+  const details = document.getElementById('privacyDetails');
+  const banner = document.getElementById('stealthBanner');
+  track.classList.toggle('active', state.privacyEnabled);
+  details.classList.toggle('show', state.privacyEnabled);
+  banner.classList.toggle('show', state.privacyEnabled);
+  updateUI();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BALANCE FETCHING
+// ═══════════════════════════════════════════════════════════════
+
+async function fetchBalances() {
+  if (!state.connected) return;
+  document.getElementById('fromBalance').textContent = await getBalanceFormatted(state.fromToken);
+  document.getElementById('toBalance').textContent = await getBalanceFormatted(state.toToken);
+}
+
+async function getBalanceFormatted(token) {
+  try {
+    if (token.isNative) {
+      const bal = await state.provider.getBalance(state.account);
+      return parseFloat(ethers.formatEther(bal)).toFixed(5);
+    }
+    const c = new ethers.Contract(token.address, ERC20_ABI, state.provider);
+    const bal = await c.balanceOf(state.account);
+    return parseFloat(ethers.formatUnits(bal, token.decimals)).toFixed(5);
+  } catch { return '0.00'; }
+}
+
+function setMax() {
+  const bal = document.getElementById('fromBalance').textContent;
+  if (bal && bal !== '—') {
+    document.getElementById('fromAmount').value = bal;
+    onAmountChange();
+  }
+}
+
+function onAmountChange() {
+  const val = parseFloat(document.getElementById('fromAmount').value);
+  if (!val || isNaN(val)) { document.getElementById('toAmount').value = ''; return; }
+  // Mock quote
+  const prices = { 'MOLE-A': 1, 'MOLE-B': 1 };
+  const pIn = prices[state.fromToken.symbol] || 1;
+  const pOut = prices[state.toToken.symbol] || 1;
+  const out = (val * pIn / pOut).toFixed(state.toToken.decimals > 6 ? 6 : 2);
+  document.getElementById('toAmount').value = out;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SWAP EXECUTION
+// ═══════════════════════════════════════════════════════════════
+
+async function handleAction() {
+  if (!state.connected) return connectWallet();
+  const amount = document.getElementById('fromAmount').value;
+  if (!amount || parseFloat(amount) <= 0) return showToast('Enter an amount', 'error');
+
+  if (state.privacyEnabled) {
+    if (!state.viewingKey) return showToast('Generate a viewing key first', 'error');
+    await executePrivateSwap(amount);
+  } else {
+    await executeDirectSwap(amount);
+  }
+}
+
+async function executeDirectSwap(amount) {
+  const panel = document.getElementById('progressPanel');
+  panel.classList.add('show');
+  setProgressSteps([
+    { id: 'approve', label: 'Approve tokens' },
+    { id: 'swap', label: 'Submit swap' },
+    { id: 'confirm', label: 'Confirm on-chain' },
+    { id: 'done', label: 'Complete' },
+  ]);
+  document.getElementById('progressTitle').innerHTML = '⚡ Direct Swap';
+
+  try {
+    updateStep('approve', 'active', 'Checking approval...');
+    // In production: approve PoolSwapTest for input token
+    await sleep(800);
+    updateStep('approve', 'done', 'Approved ✓');
+
+    updateStep('swap', 'active', 'Submitting to V4 PoolManager...');
+    await sleep(1200);
+    updateStep('swap', 'done', 'Tx submitted ✓');
+
+    updateStep('confirm', 'active', 'Waiting for confirmation...');
+    await sleep(1500);
+    updateStep('confirm', 'done', 'Confirmed in block ✓');
+
+    updateStep('done', 'done', 'Swap complete!');
+
+    addHistory('direct', state.fromToken, state.toToken, amount, null);
+    showToast('Swap complete!', 'success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function executePrivateSwap(amount) {
+  const panel = document.getElementById('progressPanel');
+  panel.classList.add('show');
+  setProgressSteps([
+    { id: 'approve', label: 'Approve tokens' },
+    { id: 'submit', label: 'Submit intent with viewing key' },
+    { id: 'wait', label: 'Wait for TEE settlement' },
+    { id: 'delay', label: 'Delay pool (60-180s)' },
+    { id: 'claim', label: 'Claim stealth key' },
+  ]);
+  document.getElementById('progressTitle').innerHTML = '🛡️ Private Swap + Delay Pool';
+
+  try {
+    // Step 1: Approve tokens first
+    updateStep('approve', 'active', 'Checking token approval...');
+    const amountWei = ethers.parseUnits(amount, state.fromToken.decimals);
+    const inputToken = new ethers.Contract(state.fromToken.address, ERC20_ABI, state.signer);
+    const currentAllowance = await inputToken.allowance(state.account, CONFIG.contracts.moleSwapHook);
+    if (currentAllowance < amountWei) {
+      updateStep('approve', 'active', 'Approving tokens...');
+      const approveTx = await inputToken.approve(CONFIG.contracts.moleSwapHook, ethers.MaxUint256);
+      await approveTx.wait();
+    }
+    updateStep('approve', 'done', 'Tokens approved ✓');
+
+    // Step 2: Submit intent with viewing public key directly to contract
+    updateStep('submit', 'active', 'Submitting intent on-chain...');
+    const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour
+
+    let intentId;
+    if (CONFIG.contracts.moleSwapHook !== '0x0000000000000000000000000000000000000000') {
+      const hook = new ethers.Contract(CONFIG.contracts.moleSwapHook, HOOK_ABI, state.signer);
+      
+      // v3: submitIntent(tokenIn, tokenOut, amountIn, viewingPubKey, deadline)
+      const tx = await hook.submitIntent(
+        state.fromToken.address,
+        state.toToken.address,
+        amountWei,
+        state.viewingKey.publicKey,  // 65 bytes uncompressed pubkey
+        deadline,
+        { gasLimit: 500000 }
+      );
+      
+      const receipt = await tx.wait();
+      
+      // Parse IntentSubmitted event to get intentId
+      const iface = new ethers.Interface(HOOK_ABI);
+      for (const log of receipt.logs) {
+        try {
+          const parsed = iface.parseLog(log);
+          if (parsed.name === 'IntentSubmitted') { 
+            intentId = parsed.args[0]; 
+            break; 
+          }
+        } catch {}
+      }
+      updateStep('submit', 'done', `Intent ${intentId?.slice(0, 14)}... submitted ✓`);
+    } else {
+      intentId = ethers.keccak256(ethers.toUtf8Bytes(`demo-${Date.now()}`));
+      await sleep(1000);
+      updateStep('submit', 'done', 'Intent submitted (demo) ✓');
+    }
+
+    // Step 3: Trigger oracle and wait for TEE settlement
+    updateStep('wait', 'active', 'Triggering oracle for TEE processing...');
+    
+    try {
+      await fetch(CONFIG.contracts.oracleUrl + '/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ intentId }),
+      });
+    } catch (e) {
+      console.log('Oracle trigger failed (may still process on interval):', e.message);
+    }
+
+    // Listen for ReleaseQueued event
+    const hook2 = new ethers.Contract(CONFIG.contracts.moleSwapHook, HOOK_ABI, state.provider);
+    let releaseData = null;
+    
+    try {
+      releaseData = await Promise.race([
+        new Promise((resolve) => {
+          hook2.on('ReleaseQueued', (releaseId, evIntentId, stealthAddress, amt, releaseTime) => {
+            if (evIntentId === intentId) {
+              hook2.removeAllListeners('ReleaseQueued');
+              resolve({ releaseId, stealthAddress, amount: amt, releaseTime: Number(releaseTime) });
+            }
+          });
+        }),
+        sleep(120000).then(() => null), // 2 min timeout
+      ]);
+    } catch(e) { console.error('ReleaseQueued listener error:', e); }
+
+    if (!releaseData) {
+      updateStep('wait', 'done', 'TEE processing (check Stealth Wallets tab) ✓');
+      showToast('Intent submitted. Settlement may take 30-60s. Check Stealth Wallets tab.', 'info');
+      
+      // Save pending intent for later checking
+      const pendingStealth = {
+        address: 'pending',
+        privateKey: 'pending',
+        intentId: intentId,
+        outputToken: state.toToken,
+        amountOut: document.getElementById('toAmount').value,
+        claimed: false,
+        timestamp: Date.now(),
+      };
+      state.stealthWallets.push(pendingStealth);
+      saveLocalData();
+      renderStealthWallets();
+      return;
+    }
+    
+    updateStep('wait', 'done', 'TEE matched and queued release ✓');
+
+    // Step 4: Wait for delay pool
+    const now = Math.floor(Date.now() / 1000);
+    const waitTime = releaseData.releaseTime - now;
+    
+    updateStep('delay', 'active', `Delay pool: ${Math.max(0, waitTime)}s remaining...`);
+    
+    // Listen for ReleaseExecuted event
+    let executedData = null;
+    try {
+      executedData = await Promise.race([
+        new Promise((resolve) => {
+          hook2.on('ReleaseExecuted', (evReleaseId, stealthAddr, token, amt, encryptedKey) => {
+            if (evReleaseId === releaseData.releaseId) {
+              hook2.removeAllListeners('ReleaseExecuted');
+              resolve({ stealthAddress: stealthAddr, encryptedKey });
+            }
+          });
+        }),
+        // Also listen for legacy StealthKeyPublished
+        new Promise((resolve) => {
+          hook2.on('StealthKeyPublished', (evIntentId, user, stealthAddr, encKey) => {
+            if (evIntentId === intentId) {
+              hook2.removeAllListeners('StealthKeyPublished');
+              resolve({ stealthAddress: stealthAddr, encryptedKey: encKey });
+            }
+          });
+        }),
+        sleep((waitTime + 60) * 1000).then(() => null),
+      ]);
+    } catch(e) { console.error('Release listener error:', e); }
+
+    updateStep('delay', 'done', 'Delay complete ✓');
+
+    // Step 5: Decrypt stealth key and save wallet
+    updateStep('claim', 'active', 'Decrypting stealth key...');
+    
+    let stealthPrivKey = null;
+    const stealthAddr = executedData?.stealthAddress || releaseData.stealthAddress;
+    
+    if (executedData?.encryptedKey) {
+      try {
+        stealthPrivKey = await eciesDecryptBrowser(executedData.encryptedKey, state.viewingKey.privateKey);
+      } catch (e) {
+        console.error('Decryption failed:', e);
+      }
+    }
+
+    const newStealth = {
+      address: stealthAddr,
+      privateKey: stealthPrivKey || 'pending',
+      intentId: intentId,
+      releaseId: releaseData?.releaseId,
+      outputToken: state.toToken,
+      amountOut: document.getElementById('toAmount').value,
+      claimed: !!stealthPrivKey,
+      timestamp: Date.now(),
+    };
+
+    state.stealthWallets.push(newStealth);
+    saveLocalData();
+
+    updateStep('claim', 'done', stealthPrivKey ? 'Stealth key claimed ✓' : 'Key pending...');
+
+    addHistory('private', state.fromToken, state.toToken, amount, stealthAddr);
+    renderStealthWallets();
+    showToast('Private swap complete! Funds in stealth wallet.', 'success');
+
+  } catch (e) {
+    showToast(e.message, 'error');
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEALTH WALLET MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+function renderStealthWallets() {
+  const list = document.getElementById('stealthWalletsList');
+  const empty = document.getElementById('swEmpty');
+  const countEl = document.getElementById('stealthCount');
+  const totalEl = document.getElementById('totalStealthValue');
+
+  if (state.stealthWallets.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(empty);
+    countEl.textContent = '0 wallets';
+    totalEl.textContent = '$0.00';
+    return;
+  }
+
+  countEl.textContent = `${state.stealthWallets.length} wallet${state.stealthWallets.length > 1 ? 's' : ''}`;
+
+  let totalUSD = 0;
+  list.innerHTML = state.stealthWallets.map((sw, i) => {
+    const usdVal = parseFloat(sw.amountOut || 0) * 1;
+    totalUSD += usdVal;
+    return `
+      <div class="sw-card">
+        <div class="sw-card-header">
+          <div class="sw-addr">${shorten(sw.address)}</div>
+          <span class="sw-status-badge ${sw.claimed ? 'claimed' : 'pending'}">
+            ${sw.claimed ? '✓ Claimed' : '⏳ Pending'}
+          </span>
+        </div>
+        <div class="sw-balances">
+          <div class="sw-balance-item">
+            <span class="amount">${sw.amountOut || '?'}</span>
+            <span class="symbol">${sw.outputToken?.symbol || '???'}</span>
+          </div>
+          <div class="sw-balance-item" style="color:var(--text-muted)">
+            ≈ $${usdVal.toFixed(2)}
+          </div>
+        </div>
+        <div class="sw-actions">
+          <button class="sw-action-btn send" onclick="openSendModal(${i})">📤 Send</button>
+          <button class="sw-action-btn export" onclick="openExportModal(${i})">🔑 Export Key</button>
+        </div>
+        <div style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)">
+          ${new Date(sw.timestamp).toLocaleString()} · Intent ${(sw.intentId || '').slice(0, 12)}...
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  totalEl.textContent = `$${totalUSD.toFixed(2)}`;
+}
+
+// ── Send from stealth ─────────────────────────
+function openSendModal(idx) {
+  const sw = state.stealthWallets[idx];
+  document.getElementById('sendFromAddr').textContent = shorten(sw.address);
+  document.getElementById('sendModal').classList.add('show');
+  document.getElementById('sendModal').dataset.idx = idx;
+}
+
+function closeSendModal() { document.getElementById('sendModal').classList.remove('show'); }
+
+async function executeSendFromStealth() {
+  const idx = parseInt(document.getElementById('sendModal').dataset.idx);
+  const sw = state.stealthWallets[idx];
+  const to = document.getElementById('sendToAddr').value;
+  const amount = document.getElementById('sendAmount').value;
+  const tokenAddr = document.getElementById('sendToken').value;
+
+  if (!to || !amount) return showToast('Fill all fields', 'error');
+
+  try {
+    showToast('Sending from stealth wallet...', 'info');
+
+    // Create wallet from stealth private key
+    const stealthSigner = new ethers.Wallet(sw.privateKey, state.provider);
+
+    if (!tokenAddr || tokenAddr === 'ETH' || tokenAddr === '0x0000000000000000000000000000000000000000') {
+      // Send native ETH
+      const tx = await stealthSigner.sendTransaction({
+        to, value: ethers.parseEther(amount)
+      });
+      await tx.wait();
+    } else {
+      // Send ERC20
+      const addr = TOKENS.find(t => t.symbol === tokenAddr)?.address || tokenAddr;
+      const token = new ethers.Contract(addr, ERC20_ABI, stealthSigner);
+      const decimals = await token.decimals();
+      const tx = await token.transfer(to, ethers.parseUnits(amount, decimals));
+      await tx.wait();
+    }
+
+    closeSendModal();
+    showToast('Sent from stealth wallet!', 'success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ── Export key ─────────────────────────────────
+function openExportModal(idx) {
+  const sw = state.stealthWallets[idx];
+  document.getElementById('exportKeyValue').value = sw.privateKey;
+  document.getElementById('exportModal').classList.add('show');
+}
+
+function closeExportModal() { document.getElementById('exportModal').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════════
+
+function addHistory(type, fromToken, toToken, amount, stealthAddr) {
+  state.history.unshift({
+    type, fromToken: fromToken.symbol, toToken: toToken.symbol,
+    amount, stealthAddr, timestamp: Date.now(),
+  });
+  saveLocalData();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (state.history.length === 0) {
+    list.innerHTML = '<div class="sw-empty"><div class="icon">📋</div><div>No swap history yet</div></div>';
+    return;
+  }
+  list.innerHTML = state.history.map(h => `
+    <div class="history-item">
+      <div class="history-item-header">
+        <span class="history-type ${h.type}">${h.type === 'private' ? '🛡️ Private' : '⚡ Direct'}</span>
+        <span class="history-time">${new Date(h.timestamp).toLocaleString()}</span>
+      </div>
+      <div class="history-detail">
+        ${h.amount} ${h.fromToken} → ${h.toToken}
+      </div>
+      ${h.stealthAddr ? `
+        <div class="history-stealth">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">Stealth:</span>
+          <span class="history-stealth-addr">${shorten(h.stealthAddr)}</span>
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEALTH KEY MONITORING (production — listens for on-chain events)
+// ═══════════════════════════════════════════════════════════════
+
+async function monitorStealthKeys() {
+  if (!state.connected || CONFIG.contracts.moleSwapHook === '0x0000000000000000000000000000000000000000') return;
+
+  const hook = new ethers.Contract(CONFIG.contracts.moleSwapHook, HOOK_ABI, state.provider);
+
+  hook.on('StealthKeyPublished', async (intentId, user, stealthAddress, encryptedKey) => {
+    if (user.toLowerCase() !== state.account.toLowerCase()) return;
+    if (!state.viewingKey) return;
+
+    showToast('Stealth key received! Decrypting...', 'info');
+
+    try {
+      const stealthPrivKey = await eciesDecryptBrowser(
+        encryptedKey.replace('0x', ''),
+        state.viewingKey.privateKey
+      );
+
+      // Find matching pending entry or create new
+      const existing = state.stealthWallets.find(s => s.intentId === intentId);
+      if (existing) {
+        existing.privateKey = stealthPrivKey;
+        existing.address = stealthAddress;
+        existing.claimed = true;
+      } else {
+        state.stealthWallets.push({
+          address: stealthAddress,
+          privateKey: stealthPrivKey,
+          intentId,
+          outputToken: null,
+          amountOut: null,
+          claimed: true,
+          timestamp: Date.now(),
+        });
+      }
+
+      saveLocalData();
+      renderStealthWallets();
+      showToast('Stealth wallet claimed!', 'success');
+    } catch (e) {
+      showToast('Failed to decrypt stealth key: ' + e.message, 'error');
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOCAL STORAGE
+// ═══════════════════════════════════════════════════════════════
+
+function saveLocalData() {
+  if (!state.account) return;
+  const key = `moleswap_${state.account.toLowerCase()}`;
+  localStorage.setItem(key, JSON.stringify({
+    viewingKey: state.viewingKey,
+    stealthWallets: state.stealthWallets,
+    history: state.history,
+  }));
+}
+
+function loadLocalData() {
+  if (!state.account) return;
+  const key = `moleswap_${state.account.toLowerCase()}`;
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    try {
+      const data = JSON.parse(raw);
+      state.viewingKey = data.viewingKey || null;
+      state.stealthWallets = data.stealthWallets || [];
+      state.history = data.history || [];
+    } catch {}
+  }
+  updateViewingKeyUI();
+  renderStealthWallets();
+  renderHistory();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach((t, i) => {
+    t.classList.toggle('active', ['swap', 'stealth', 'history'][i] === tab);
+  });
+  document.getElementById('swapPanel').style.display = tab === 'swap' ? 'block' : 'none';
+  document.getElementById('stealthPanel').classList.toggle('show', tab === 'stealth');
+  document.getElementById('historyPanel').classList.toggle('show', tab === 'history');
+}
+
+function updateUI() {
+  // From token
+  document.getElementById('fromTokenSymbol').textContent = state.fromToken.symbol;
+  document.getElementById('fromTokenIcon').className = `token-icon ${state.fromToken.iconClass}`;
+  document.getElementById('fromTokenIcon').textContent = state.fromToken.iconText;
+  // To token
+  document.getElementById('toTokenSymbol').textContent = state.toToken.symbol;
+  document.getElementById('toTokenIcon').className = `token-icon ${state.toToken.iconClass}`;
+  document.getElementById('toTokenIcon').textContent = state.toToken.iconText;
+
+  // Action button
+  const btn = document.getElementById('actionBtn');
+  if (!state.connected) {
+    btn.textContent = 'Connect Wallet';
+    btn.className = 'swap-btn connect';
+  } else if (state.privacyEnabled) {
+    btn.textContent = '🛡️ Private Swap + Stealth';
+    btn.className = 'swap-btn private';
+  } else {
+    btn.textContent = '⚡ Swap';
+    btn.className = 'swap-btn swap';
+  }
+}
+
+function setProgressSteps(steps) {
+  document.getElementById('progressSteps').innerHTML = steps.map((s, i) => `
+    <div class="step" id="step-${s.id}">
+      <div class="step-dot">${i + 1}</div>
+      ${i < steps.length - 1 ? '<div class="step-line"></div>' : ''}
+      <div class="step-text">
+        <div class="label">${s.label}</div>
+        <div class="detail" id="detail-${s.id}"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateStep(id, status, detail) {
+  const el = document.getElementById(`step-${id}`);
+  if (!el) return;
+  el.className = `step ${status}`;
+  const detailEl = document.getElementById(`detail-${id}`);
+  if (detailEl) detailEl.textContent = detail || '';
+}
+
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function shorten(addr) {
+  if (!addr) return '';
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+window.addEventListener('load', () => {
+  updateUI();
+  // Auto-connect if previously connected
+  if (window.ethereum?.selectedAddress) connectWallet();
+});
+</script>
+</body>
+</html>

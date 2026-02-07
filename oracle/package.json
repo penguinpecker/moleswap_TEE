@@ -1,0 +1,22 @@
+{
+  "name": "moleswap-oracle",
+  "version": "3.0.0",
+  "type": "module",
+  "description": "MoleSwap Oracle with iExec TEE Integration",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:local": "USE_LOCAL_TEE=true node src/index.js",
+    "start:iexec": "USE_LOCAL_TEE=false node src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.4",
+    "ethers": "^6.16.0",
+    "express": "^5.2.1",
+    "graphql": "^16.12.0",
+    "iexec": "^8.7.0",
+    "jszip": "^3.10.1",
+    "undici": "^7.21.0"
+  }
+}

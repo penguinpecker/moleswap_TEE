@@ -1,0 +1,18 @@
+{
+  "description": "MoleSwap TEE Matching Engine - Privacy-preserving DEX matching with stealth addresses and encrypted outputs. Runs inside SGX enclave for trustless privacy.",
+  "license": "MIT",
+  "author": "penguinpecker",
+  "app": {
+    "owner": "0xffD9E66c997391b01E5ca3f36E13ab3e786a8c42",
+    "name": "moleswap-matcher-0.0.2",
+    "type": "DOCKER",
+    "multiaddr": "docker.io/penguinpecker/moleswap-matcher:0.0.2",
+    "checksum": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "mrenclave": {
+      "framework": "SCONE",
+      "version": "v5.9",
+      "entrypoint": "node /app/src/app.js",
+      "heapSize": 1073741824
+    }
+  }
+}

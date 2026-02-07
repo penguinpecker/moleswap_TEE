@@ -1,0 +1,12 @@
+{
+  "default": "arbitrum-sepolia-testnet",
+  "chains": {
+    "arbitrum-sepolia-testnet": {
+      "id": "421614",
+      "host": "https://arb-sepolia.g.alchemy.com/v2/VOl_4XiKHyYrS4KxnhzsD",
+      "sms": "https://sms.labs.iex.ec",
+      "resultProxy": "https://result.labs.iex.ec",
+      "iexecGateway": "https://api.labs.iex.ec"
+    }
+  }
+}

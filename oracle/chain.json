@@ -1,0 +1,12 @@
+{
+  "default": "arbitrum-sepolia-testnet",
+  "chains": {
+    "mainnet": {},
+    "bellecour": {},
+    "arbitrum-mainnet": {},
+    "arbitrum-sepolia-testnet": {
+      "id": "421614",
+      "host": "https://arb-sepolia.g.alchemy.com/v2/VOl_4XiKHyYrS4KxnhzsD"
+    }
+  }
+}
