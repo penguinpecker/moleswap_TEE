@@ -1,0 +1,7 @@
+{
+  "name": "moleswap-oracle",
+  "scripts": {
+    "start": "cd oracle && node src/index.js",
+    "install": "cd oracle && npm install"
+  }
+}
