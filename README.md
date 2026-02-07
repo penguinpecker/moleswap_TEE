@@ -1,300 +1,413 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/🎯_TILTSCOPE-ff0055?style=for-the-badge&labelColor=0a0a12" alt="TiltScope"/>
-</p>
+# MoleSwap 🦔
 
-<h1 align="center">TILTSCOPE</h1>
-<h3 align="center">"See the tilt before the scoreboard does"</h3>
+**Privacy-Preserving DEX with iExec TEE + Uniswap v4 Hooks**
 
-<p align="center">
-  <strong>AI-powered Comprehensive Assistant Coach that detects player "tilt" in real-time and predicts match outcomes using GRID Esports data</strong>
-</p>
+MoleSwap is a decentralized exchange that enables private token swaps using stealth addresses generated inside iExec's Trusted Execution Environment (TEE). Users can swap tokens without revealing their receiving address on-chain.
 
-<p align="center">
-  <a href="https://tiltscope-9m08nrxmh-penguinpeckers-projects.vercel.app/">🚀 Live Demo</a> •
-  <a href="https://tiltscope-9m08nrxmh-penguinpeckers-projects.vercel.app/docs.html">📖 Documentation</a> •
-  <a href="#-demo-video">🎬 Demo Video</a>
-</p>
+![MoleSwap Architecture](https://img.shields.io/badge/Chain-Arbitrum%20Sepolia-blue) ![TEE](https://img.shields.io/badge/TEE-iExec%20SGX-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
----
+## 🤔 Why MoleSwap?
 
-## 🏆 Sky's the Limit - Cloud9 x JetBrains Hackathon 2025
+### The Problem with Current "Private" DEXs
 
-| | |
-|---|---|
-| **Category** | Category 1: Comprehensive Assistant Coach |
-| **Game** | VALORANT |
-| **Data Source** | GRID Esports API |
-| **Live Demo** | [tiltscope.vercel.app](https://tiltscope-9m08nrxmh-penguinpeckers-projects.vercel.app/) |
+Most TEE-based DEXs today focus on protecting **trade parameters**:
+- Slippage tolerance
+- MEV protection (front-running, sandwich attacks)
+- Order details before execution
 
----
+While useful, **this isn't real privacy**. After the swap executes, anyone can see:
+- ❌ Who sent the tokens
+- ❌ Who received the tokens  
+- ❌ The full transaction trail
+- ❌ Your complete wallet history
 
-## 🎯 What is TiltScope?
+Your financial activity remains **fully transparent** on-chain.
 
-Inspired by **Moneyball's Peter Brand**, TiltScope is a comprehensive **Assistant Coach** that merges **micro-level player analytics** with **macro-level strategic review**.
+### MoleSwap: Actual Privacy
 
-Traditional stats like K/D ratios are **lagging indicators** — they show decline *after* it's too late. TiltScope solves this by detecting **player tilt in real-time** using statistical deviation analysis, then predicting its impact on match outcomes with ML.
+MoleSwap takes privacy **several steps further**:
 
-### Core Innovation: Z-Score Tilt Detection
+| Feature | Other TEE DEXs | MoleSwap |
+|---------|---------------|----------|
+| MEV Protection | ✅ | ✅ |
+| Hidden Slippage | ✅ | ✅ |
+| **Hidden Recipient** | ❌ | ✅ |
+| **Stealth Addresses** | ❌ | ✅ |
+| **Unlinkable Outputs** | ❌ | ✅ |
+| **Time-Delayed Release** | ❌ | ✅ |
 
-Instead of looking at raw K/D, we compare **current performance to each player's historical baseline**:
+**With MoleSwap:**
+- ✅ Output tokens go to a **freshly generated stealth address**
+- ✅ No on-chain link between your main wallet and received funds
+- ✅ Stealth private keys generated **inside TEE** — never exposed
+- ✅ Only you can decrypt and access your stealth wallet
+- ✅ Time delay adds **temporal privacy** (harder to correlate)
+
+### Real-World Impact
 
 ```
-z_score = (current_kd - player_baseline_mean) / player_baseline_std
+Traditional DEX:
+  Alice (0xA1..) → Swap 1000 USDC → Alice (0xA1..) receives 0.5 ETH
+  Result: Everyone knows Alice's balance and trading activity
+
+MoleSwap:
+  Alice (0xA1..) → Swap 1000 USDC → Stealth (0xF7..) receives 0.5 ETH
+  Result: No public link between Alice and her received ETH
 ```
 
-This reveals performance state **before** the scoreboard does.
+This is the difference between **hiding how you trade** vs **hiding that you traded at all**.
 
----
+## 🎯 Features
 
-## ⚡ Features (Matching Category 1 Requirements)
+- **Privacy-First Swaps**: Output tokens sent to freshly generated stealth addresses
+- **TEE-Protected Key Generation**: Stealth keys generated inside iExec SGX enclaves
+- **Time-Delayed Releases**: Configurable 60-180s delay adds temporal privacy
+- **Encrypted Key Recovery**: Only the recipient can decrypt their stealth wallet private key
+- **Uniswap v4 Integration**: Swaps executed through Uniswap v4 hooks for best pricing
+- **Intent-Based Architecture**: Submit intents, let the oracle handle execution
 
-### ✅ 1. Personalized Player/Team Improvement Insights
+## 🏗️ Architecture
 
-TiltScope analyzes individual player data to identify **recurring mistakes and statistical outliers**:
-
-| Player | Current K/D | Baseline K/D | Z-Score | State | Insight |
-|--------|-------------|--------------|---------|-------|---------|
-| OXY | 0.43 | 1.19 | -1.70 | 💀 TILTED | Performing 64% below baseline - mental reset needed |
-| v1c | 0.50 | 1.08 | -1.61 | 💀 TILTED | Star player collapsed - review opening pathing |
-| mada | 4.20 | 1.24 | +2.79 | 🔥 ON FIRE | Explosive carry - protect this player |
-
-**Performance States:**
-- 🔥 **ON FIRE** (z > +1.5): Player performing 50%+ above baseline
-- 📈 **HOT** (+0.5 < z < +1.5): Above average performance
-- ➖ **NORMAL** (-0.5 < z < +0.5): Playing at baseline
-- 📉 **COLD** (-1.5 < z < -0.5): Below average - watch closely
-- 💀 **TILTED** (z < -1.5): Player is tilting - intervene NOW
-
-### ✅ 2. Automated Macro Game Review
-
-TiltScope automatically generates **game review agendas** highlighting:
-
-- **Team Z-Scores**: Overall team mental state comparison
-- **Tilt Progression Tracker**: Track how player performance changes across games
-- **Critical Moments**: Identify when tilt began affecting outcomes
-- **Win Probability Impact**: Quantify how tilt affected match result
-
-**Example Output (Cloud9 vs NRG - Game 2 Corrode):**
 ```
-GAME REVIEW AGENDA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Map: Corrode | Score: 2-13 (Loss)
-Team Z-Score: -0.97 (TEAM TILTED)
-
-CRITICAL ISSUES:
-• OXY (z=-1.70): Star player tilted - 64% below baseline
-• v1c (z=-1.61): Secondary carry tilted - 54% below baseline
-• Combined impact: 2 of 5 players in TILTED state
-
-OPPONENT ADVANTAGE:
-• mada (z=+2.79): ON FIRE - exploited C9 tilt
-• NRG Team Z-Score: +1.02 (TEAM HOT)
-
-RECOMMENDATION: Mental reset protocol before Game 3
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+│                 │      │                 │      │                 │
+│    Frontend     │─────▶│  MoleSwap Hook  │◀─────│     Oracle      │
+│   (Vercel)      │      │  (Uniswap v4)   │      │   (Railway)     │
+│                 │      │                 │      │                 │
+└─────────────────┘      └─────────────────┘      └────────┬────────┘
+                                                           │
+                                                           ▼
+                                                  ┌─────────────────┐
+                                                  │                 │
+                                                  │   iExec TEE     │
+                                                  │  (SGX Enclave)  │
+                                                  │                 │
+                                                  └─────────────────┘
 ```
 
-### ✅ 3. Predict Hypothetical Outcomes (What-If Analysis)
+### Flow
 
-TiltScope's **Monte Carlo simulation engine** answers strategic "what if" questions:
-
-> **Query:** "What if OXY had performed at baseline instead of tilting in Game 2?"
-
-**Monte Carlo Simulation (100 iterations):**
-| Scenario | NRG Win Probability | Cloud9 Win Probability |
-|----------|---------------------|------------------------|
-| Actual (OXY tilted) | 96.8% | 3.2% |
-| Simulated (OXY at baseline) | 62.3% | 37.7% |
-| **Tilt Impact** | — | **+34.5% swing** |
-
-**Insight:** OXY's tilt cost Cloud9 approximately 35% win probability. Recommend reviewing opening duel strategy and mental conditioning.
-
-### ✅ 4. ML Win Prediction
-
-**Ensemble Model Architecture:**
-```python
-prediction = (
-    0.25 * LogisticRegression +    # Interpretable baseline
-    0.35 * RandomForest +          # Non-linear patterns  
-    0.40 * GradientBoosting        # Complex interactions
-)
-```
-
-**Feature Engineering (20 features per game):**
-- Team averages: `avg_kd`, `avg_z_score`, `total_kills`, `total_deaths`
-- State counts: `tilted_count`, `hot_count`, `fire_count`
-- Differentials: `kd_diff`, `z_score_diff`, `momentum`
-- Context: `map_encoding`, `game_number`, `series_score`
-
-**Performance:** 14/14 games predicted correctly in validation set
-
----
-
-## 🎮 Case Study: Cloud9 vs NRG (VCT Americas 2025)
-
-### Match Overview
-| Game | Map | Score | Winner | C9 Z-Score | NRG Z-Score | Prediction |
-|------|-----|-------|--------|------------|-------------|------------|
-| 1 | Haven | 13-10 | Cloud9 | +0.62 | -0.30 | C9 97% ✅ |
-| 2 | Corrode | 2-13 | NRG | **-0.97** | +1.02 | NRG 96.8% ✅ |
-| 3 | Lotus | 10-13 | NRG | -0.24 | +0.16 | NRG 94.8% ✅ |
-
-### Game 2 Deep Dive - The Tilt Game
-
-**Cloud9 Players:**
-| Player | Agent | K/D | Z-Score | State |
-|--------|-------|-----|---------|-------|
-| OXY | Neon | 0.43 | -1.70 | 💀 TILTED |
-| v1c | Omen | 0.50 | -1.61 | 💀 TILTED |
-| neT | Viper | 0.50 | -0.56 | 📉 COLD |
-| Xeppaa | Vyse | 0.69 | -0.52 | 📉 COLD |
-| mitch | Skye | 0.50 | -0.47 | ➖ NORMAL |
-
-**NRG Players:**
-| Player | Agent | K/D | Z-Score | State |
-|--------|-------|-----|---------|-------|
-| mada | Waylay | 4.20 | +2.79 | 🔥 ON FIRE |
-| brawk | Sova | 2.57 | +1.24 | 📈 HOT |
-| s0m | Omen | 1.17 | +0.94 | 📈 HOT |
-| Ethan | Kay/O | 1.44 | +0.62 | 📈 HOT |
-| skuba | Viper | 1.00 | -0.50 | ➖ NORMAL |
-
-**TiltScope Prediction:** NRG 96.8% → ✅ **CORRECT**
-
-### Tilt Progression Across Series
-
-| Player | Game 1 | Game 2 | Game 3 | Trend |
-|--------|--------|--------|--------|-------|
-| v1c (C9) | 1.47 📈 | 0.50 💀 | 1.25 ➖ | Recovered |
-| OXY (C9) | 1.50 📈 | 0.43 💀 | 1.16 ➖ | Recovered |
-| mada (NRG) | 0.75 ➖ | 4.20 🔥 | 1.19 ➖ | Game 2 explosion |
-
----
-
-## 🛠 Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| **Backend** | Python 3.12, FastAPI, asyncio, httpx |
-| **ML/Data** | scikit-learn, pandas, NumPy |
-| **Frontend** | React 18, Vanilla CSS |
-| **Deployment** | Vercel |
-| **Data Source** | GRID Esports API (VALORANT) |
-| **IDE** | JetBrains PyCharm |
-
----
+1. **User submits intent** on-chain with viewing public key
+2. **Oracle picks up intent** and sends to iExec TEE
+3. **TEE generates stealth address** + encrypts private key with user's viewing key
+4. **Oracle settles batch** on MoleSwap Hook contract
+5. **Uniswap v4 swap executes**, tokens held in contract
+6. **After time delay**, tokens released to stealth address
+7. **User decrypts** stealth wallet private key and claims funds
 
 ## 📁 Project Structure
 
 ```
-tiltscope/
-├── backend/
-│   ├── main.py                 # FastAPI REST API server
-│   ├── api/
-│   │   └── grid_client.py      # GRID Esports API integration
-│   └── core/
-│       ├── baseline.py         # Player baseline calculator (μ, σ)
-│       ├── deviation.py        # Z-score tilt detection engine
-│       ├── features.py         # ML feature engineering (20 features)
-│       ├── predictor.py        # Ensemble ML predictor
-│       └── whatif.py           # Monte Carlo "What-If" simulator
-├── frontend/
-│   ├── index.html              # Main dashboard (React)
-│   └── docs.html               # Documentation page
-├── requirements.txt            # Python dependencies
-├── vercel.json                 # Deployment config
-├── LICENSE                     # MIT License
+moleswap-v3/
+├── contracts/           # Solidity smart contracts
+│   ├── src/
+│   │   └── MoleSwapHook.sol    # Uniswap v4 hook + settlement logic
+│   └── script/
+│       └── Deploy.s.sol        # Deployment scripts
+├── oracle/              # Node.js oracle service
+│   ├── src/
+│   │   └── index.js            # Oracle main entry point
+│   └── package.json
+├── tee-app/             # iExec TEE application
+│   ├── src/
+│   │   └── app.js              # TEE stealth address generator
+│   └── iexec.json
+├── frontend/            # Web interface
+│   └── index.html              # Single-page application
 └── README.md
 ```
-
----
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.10+
-- GRID API Key ([Apply here](https://grid.gg/hackathon-application-form/))
 
-### Backend Setup
+- Node.js 18+
+- Foundry (for contracts)
+- MetaMask wallet
+- Arbitrum Sepolia ETH (for gas)
+
+### 1. Clone Repository
 
 ```bash
-# Clone repository
-git clone https://github.com/penguinpecker/tiltscope.git
-cd tiltscope
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set environment variable
-export GRID_API_KEY="your_api_key_here"
-
-# Run server
-cd backend
-uvicorn main:app --reload --port 8000
+git clone https://github.com/penguinpecker/moleswap_TEE.git
+cd moleswap_TEE
 ```
 
-### Frontend
+### 2. Deploy Contracts (Optional - Already Deployed)
+
 ```bash
-# Open directly in browser
-open frontend/index.html
+cd contracts
+forge install
+cp .env.example .env
+# Add PRIVATE_KEY and RPC_URL to .env
 
-# Or serve locally
-cd frontend && python -m http.server 3000
+forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
 ```
 
-### API Endpoints
+### 3. Setup Oracle
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Health check |
-| POST | `/api/initialize` | Initialize with team data |
-| GET | `/api/matches` | List available matches |
-| GET | `/api/match/{id}/analysis` | Full match analysis with tilt detection |
-| GET | `/api/whatif/{id}/{game}` | Monte Carlo what-if scenarios |
-| GET | `/api/demo` | Demo data (no API key needed) |
+```bash
+cd oracle
+npm install
+cp .env.example .env
+```
 
----
+Edit `.env`:
+```env
+PRIVATE_KEY=your_private_key_here
+RPC_URL=https://arb-sepolia.g.alchemy.com/v2/YOUR_KEY
+HTTP_PORT=3001
+```
 
-## 🎬 Demo Video
+Run locally:
+```bash
+node src/index.js
+```
 
-[**→ Watch 3-Minute Demo on YouTube**](YOUR_YOUTUBE_LINK_HERE)
+### 4. Deploy TEE App to iExec (Optional - Already Deployed)
 
----
+```bash
+cd tee-app
+npm install -g iexec
 
-## 🔗 Links
+iexec init --skip-wallet
+iexec wallet import your_private_key
+iexec app deploy --chain arbitrum-sepolia
+iexec app publish --chain arbitrum-sepolia
+```
 
-| Resource | URL |
-|----------|-----|
-| **Live Demo** | [tiltscope.vercel.app](https://tiltscope-9m08nrxmh-penguinpeckers-projects.vercel.app/) |
-| **Documentation** | [tiltscope.vercel.app/docs](https://tiltscope-9m08nrxmh-penguinpeckers-projects.vercel.app/docs.html) |
-| **GitHub Repository** | [github.com/penguinpecker/tiltscope](https://github.com/penguinpecker/tiltscope) |
+### 5. Run Frontend Locally
 
----
+```bash
+cd frontend
+# Simply open index.html in a browser, or use a local server:
+npx serve .
+```
+
+## ☁️ Deployment
+
+### Oracle → Railway
+
+1. Push code to GitHub
+2. Connect Railway to your repo
+3. Set **Root Directory**: (leave empty, uses nixpacks.toml)
+4. Add environment variables:
+   - `PRIVATE_KEY`: Oracle wallet private key
+   - `RPC_URL`: Alchemy Arbitrum Sepolia URL
+5. Deploy and get your URL (e.g., `https://your-app.up.railway.app`)
+6. Generate domain in Settings → Networking (Port: 3001)
+
+### Frontend → Vercel
+
+1. Connect Vercel to your repo
+2. Set **Root Directory**: `frontend`
+3. Add environment variables (optional, hardcoded in HTML):
+   - `NEXT_PUBLIC_ORACLE_URL`: Your Railway URL
+4. Deploy
+
+## 📋 Deployed Contracts (Arbitrum Sepolia)
+
+| Contract | Address |
+|----------|---------|
+| MoleSwap Hook | `0xF2BE644D71936bD8544f3599edd8083De6831500` |
+| MOLE-A Token | `0xCc777c07d5ecCfFEB8C02E62805bd120CE4C7c6E` |
+| MOLE-B Token | `0xFbd51f6D6005f767AF48Bd6D52eFD53Fa419aFB1` |
+| iExec TEE App | `0x0EB32Cd94495c47102c95c08dEEA13F80DB20B4f` |
+
+## 🔧 Configuration
+
+### Oracle Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `PRIVATE_KEY` | Oracle wallet private key | Yes |
+| `RPC_URL` | Arbitrum Sepolia RPC (use Alchemy) | Yes |
+| `HTTP_PORT` | Server port (default: 3001) | No |
+| `BATCH_INTERVAL_MS` | Polling interval (default: 30000) | No |
+
+### Frontend Configuration
+
+Update `CONFIG` object in `index.html`:
+
+```javascript
+const CONFIG = {
+  chainId: 421614,
+  chainName: 'Arbitrum Sepolia',
+  rpcUrl: 'https://sepolia-rollup.arbitrum.io/rpc',
+  contracts: {
+    moleSwapHook: '0xF2BE644D71936bD8544f3599edd8083De6831500',
+    moleA: '0xCc777c07d5ecCfFEB8C02E62805bd120CE4C7c6E',
+    moleB: '0xFbd51f6D6005f767AF48Bd6D52eFD53Fa419aFB1',
+    oracleUrl: 'https://your-railway-url.up.railway.app',
+  },
+  iexecApp: '0x0EB32Cd94495c47102c95c08dEEA13F80DB20B4f',
+};
+```
+
+## 📖 Usage Guide
+
+### Getting Test Tokens
+
+1. Connect wallet to the dApp
+2. Click "Faucet" button
+3. Receive 1000 MOLE-A and 1000 MOLE-B
+
+### Making a Private Swap
+
+1. Enable "Privacy Mode" toggle
+2. Enter swap amount
+3. Click "Swap"
+4. Approve token spending (first time only)
+5. Submit intent transaction
+6. Wait for TEE processing (30-120s)
+7. Wait for privacy delay (60-180s)
+8. Tokens automatically sent to your stealth address
+9. Check "Stealth Wallets" tab to view and claim
+
+### Claiming from Stealth Wallet
+
+1. Go to "Stealth Wallets" tab
+2. Find your stealth wallet with balance
+3. Click "Withdraw" to send tokens to your main wallet
+
+## 🔐 Security Model
+
+### What the TEE Protects
+
+- **Stealth address generation**: Private keys created inside SGX enclave
+- **Key encryption**: Only viewable by recipient's viewing key
+- **No front-running**: Intent details hidden until settlement
+
+### Trust Assumptions
+
+- iExec TEE enclaves are secure (Intel SGX)
+- Oracle is honest (can be decentralized in production)
+- Uniswap v4 pool has sufficient liquidity
+
+## 🛠️ Technical Details
+
+### Intent Structure
+
+```solidity
+struct Intent {
+    address sender;
+    address tokenIn;
+    address tokenOut;
+    uint256 amountIn;
+    bytes viewingPubKey;    // For encrypting stealth key
+    uint256 deadline;
+    uint256 submittedAt;
+    bool settled;
+}
+```
+
+### Settlement Batch
+
+```solidity
+struct SettlementBatch {
+    InternalMatch[] internalMatches;  // P2P matches
+    Settlement[] ammSettlements;       // Uniswap swaps
+    Release[] releases;                // Time-delayed outputs
+    bytes32 batchId;
+    uint256 timestamp;
+    bytes teeSignature;               // TEE attestation
+}
+```
+
+### Release Structure
+
+```solidity
+struct Release {
+    address token;
+    address stealthAddress;
+    uint256 amount;
+    uint256 releaseTime;              // Unix timestamp
+    bytes encryptedStealthKey;        // Encrypted with viewing key
+    bytes32 intentId;
+    bool executed;
+}
+```
+
+## 🧪 Testing
+
+### Run Contract Tests
+
+```bash
+cd contracts
+forge test -vvv
+```
+
+### Test Oracle Locally
+
+```bash
+cd oracle
+node src/index.js
+
+# In another terminal:
+curl http://localhost:3001/health
+curl -X POST http://localhost:3001/faucet -H "Content-Type: application/json" -d '{"address":"0xYourAddress"}'
+```
+
+## 🌐 Live Demo
+
+- **Frontend**: [https://moleswap-tee.vercel.app](https://moleswap-tee.vercel.app)
+- **Oracle**: [https://moleswaptee-production.up.railway.app](https://moleswaptee-production.up.railway.app)
+- **Health Check**: [https://moleswaptee-production.up.railway.app/health](https://moleswaptee-production.up.railway.app/health)
+
+## 📚 API Reference
+
+### Oracle Endpoints
+
+#### `GET /health`
+Returns oracle status.
+
+```json
+{
+  "status": "ok",
+  "oracle": "0xffD9E66c997391b01E5ca3f36E13ab3e786a8c42",
+  "hook": "0xF2BE644D71936bD8544f3599edd8083De6831500"
+}
+```
+
+#### `POST /faucet`
+Request test tokens.
+
+```bash
+curl -X POST https://your-oracle.railway.app/faucet \
+  -H "Content-Type: application/json" \
+  -d '{"address": "0xYourWalletAddress"}'
+```
+
+#### `POST /submit`
+Trigger intent processing.
+
+```bash
+curl -X POST https://your-oracle.railway.app/submit \
+  -H "Content-Type: application/json" \
+  -d '{"intentId": "0x..."}'
+```
+
+#### `GET /status/:intentId`
+Check intent processing status.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open Pull Request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
+MIT License - see [LICENSE](LICENSE) file.
 
 ## 🙏 Acknowledgments
 
-- **Cloud9** — For hosting this incredible hackathon
-- **JetBrains** — For world-class developer tools and PyCharm IDE
-- **GRID Esports** — For providing official VALORANT match data
-- **Moneyball / Peter Brand** — For the inspiration that data can reveal what the eye cannot see
+- [iExec](https://iex.ec/) - TEE infrastructure
+- [Uniswap](https://uniswap.org/) - v4 hooks framework
+- [Arbitrum](https://arbitrum.io/) - L2 scaling
 
 ---
 
-<p align="center">
-  <strong>🎯 TILTSCOPE</strong><br>
-  <em>"See the tilt before the scoreboard does"</em>
-</p>
-
-<p align="center">
-  Built with ❤️ for the <strong>Cloud9 x JetBrains Hackathon 2025</strong>
-</p>
+Built with 🦔 for the iExec Hackathon 2025
