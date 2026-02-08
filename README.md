@@ -6,6 +6,8 @@ MoleSwap is a decentralized exchange that enables private token swaps using stea
 
 ![MoleSwap Architecture](https://img.shields.io/badge/Chain-Arbitrum%20Sepolia-blue) ![TEE](https://img.shields.io/badge/TEE-iExec%20SGX-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+TRY LIVE DEMO HERE: https://moleswap-tee.vercel.app/
+
 ## 🤔 Why MoleSwap?
 
 ### The Problem with Current "Private" DEXs
